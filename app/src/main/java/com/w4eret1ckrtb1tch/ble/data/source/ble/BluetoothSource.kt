@@ -1,8 +1,10 @@
 package com.w4eret1ckrtb1tch.ble.data.source.ble
 
+import android.os.ParcelUuid
 import android.util.Log
 import com.w4eret1ckrtb1tch.ble.data.system.ble.BluetoothAdvertiserService
 import com.w4eret1ckrtb1tch.ble.data.system.ble.BluetoothScannerService
+import com.w4eret1ckrtb1tch.ble.domain.entity.ScanResult
 import io.reactivex.Completable
 import io.reactivex.Observable
 import io.reactivex.Single
@@ -18,8 +20,8 @@ class BluetoothSource(
         Log.d("TAG", "BluetoothSource: $bluetoothAdvertiserService")
     }
 
-    fun startAdvertising(): Completable {
-        return bluetoothAdvertiserService.startAdvertising()
+    fun startAdvertising(userId: ParcelUuid? = null): Completable {
+        return bluetoothAdvertiserService.startAdvertising(userId)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
     }
@@ -30,7 +32,7 @@ class BluetoothSource(
             .observeOn(AndroidSchedulers.mainThread())
     }
 
-    fun startScanning(): Observable<String> {
+    fun startScanning(): Observable<ScanResult> {
         return bluetoothScannerService.isScanRuntimePermissionGranted()
             .filter { it }
             .switchIfEmpty(Single.error(IllegalStateException("Permission not granted at run time")))

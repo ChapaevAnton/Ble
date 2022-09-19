@@ -26,22 +26,31 @@ class BluetoothAdvertiserService(context: Context) {
         .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_MEDIUM)
         .build()
 
-    private val data = AdvertiseData.Builder()
+    private val advertiseData = AdvertiseData.Builder()
         .setIncludeDeviceName(false)
         .setIncludeTxPowerLevel(true)
         .addServiceUuid(SERVICE_UUID)
         .build()
 
+    private var scanResponse: AdvertiseData? = null
+
     init {
-        Log.d("TAG", "BluetoothAdvertiserService: $context ")
+        Log.d("TAG", "BluetoothAdvertiserService: $context")
     }
 
     @SuppressLint("MissingPermission")
-    fun startAdvertising(): Completable {
+    fun startAdvertising(userId: ParcelUuid? = null): Completable {
         return Completable
             .create { emitter ->
                 if (advertiseCallback != null) {
                     emitter.onError(IllegalStateException("Advertising running"))
+                }
+
+                if (userId != null) {
+                    scanResponse = AdvertiseData.Builder()
+                        .setIncludeDeviceName(false)
+                        .addServiceUuid(userId)
+                        .build()
                 }
 
                 advertiseCallback = object : AdvertiseCallback() {
@@ -58,9 +67,15 @@ class BluetoothAdvertiserService(context: Context) {
                 }
 
                 advertiseCallback?.let { callback ->
-                    bluetoothAdvertiser?.startAdvertising(settings, data, callback)
+                    bluetoothAdvertiser?.startAdvertising(
+                        settings,
+                        advertiseData,
+                        scanResponse,
+                        callback
+                    )
                         ?: emitter.onError(IllegalStateException("The service or null if the class is not a supported system service"))
-                } ?: emitter.onError(IllegalStateException("Advertising initialization error"))
+                } ?: emitter
+                    .onError(IllegalStateException("Advertising initialization error"))
             }
             .doOnComplete {
                 Log.d("TAG", "startAdvertising: ok")
