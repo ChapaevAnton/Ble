@@ -1,15 +1,18 @@
 package com.w4eret1ckrtb1tch.ble.data.system.ble
 
+import android.util.Log
 import com.polidea.rxandroidble2.RxBleClient
 import com.polidea.rxandroidble2.scan.ScanFilter
 import com.polidea.rxandroidble2.scan.ScanSettings
 import io.reactivex.Completable
-import io.reactivex.Observable
 import io.reactivex.Single
+import io.reactivex.disposables.Disposable
 
 class BluetoothScannerService(
     private val rxBleClient: RxBleClient
 ) {
+
+    private var scanningDisposable: Disposable? = null
 
     private val setting = ScanSettings.Builder()
         .setScanMode(ScanSettings.SCAN_MODE_BALANCED)
@@ -20,14 +23,26 @@ class BluetoothScannerService(
         .setServiceUuid(BluetoothAdvertiserService.SERVICE_UUID)
         .build()
 
-    fun startScanning(): Observable<String> {
-        return rxBleClient
-            .scanBleDevices(setting, filter)
-            .map { scanResult -> scanResult.toString() }
+    fun startScanning(): Completable {
+        return Completable.fromAction {
+            rxBleClient
+                .scanBleDevices(setting, filter)
+                .map { scanResult ->
+                    scanResult.toString()
+                }
+                .doOnSubscribe { Log.d("TAG", "StartScanning: SCAN") }
+                .doOnNext { Log.d("TAG", "ScanningResult: $it") }
+                .doOnError { Log.d("TAG", "ScanningError: $it") }
+                .doOnDispose { Log.d("TAG", "StopScanning: STOP") }
+                .subscribe()
+                .also { scanningDisposable = it }
+        }
     }
 
     fun stopScanning(): Completable {
-        TODO()
+        return Completable.fromAction {
+            scanningDisposable?.dispose()
+        }
     }
 
     fun isScanRuntimePermissionGranted(): Single<Boolean> {

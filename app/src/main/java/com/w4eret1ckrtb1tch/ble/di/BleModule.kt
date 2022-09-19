@@ -7,6 +7,7 @@ import com.w4eret1ckrtb1tch.ble.data.system.ble.BluetoothScannerService
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StartAdvertisingUseCase
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StartScanningUseCase
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StopAdvertisingUseCase
+import com.w4eret1ckrtb1tch.ble.domain.usecase.StopScanningUseCase
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
 
@@ -41,6 +42,9 @@ object BleModule {
         }
         factory {
             StartScanningUseCase(bluetoothSource = get())
+        }
+        factory {
+            StopScanningUseCase(bluetoothSource = get())
         }
     }
 }

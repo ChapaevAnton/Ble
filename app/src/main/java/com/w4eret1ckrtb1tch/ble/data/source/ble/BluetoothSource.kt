@@ -4,7 +4,6 @@ import android.util.Log
 import com.w4eret1ckrtb1tch.ble.data.system.ble.BluetoothAdvertiserService
 import com.w4eret1ckrtb1tch.ble.data.system.ble.BluetoothScannerService
 import io.reactivex.Completable
-import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.schedulers.Schedulers
@@ -30,14 +29,18 @@ class BluetoothSource(
             .observeOn(AndroidSchedulers.mainThread())
     }
 
-    fun startScanning(): Observable<String> {
+    fun startScanning(): Completable {
         return bluetoothScannerService.isScanRuntimePermissionGranted()
             .filter { it }
             .switchIfEmpty(Single.error(IllegalStateException("Permission not granted at run time")))
-            .flatMapObservable {
+            .flatMapCompletable {
                 bluetoothScannerService.startScanning()
             }
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
+    }
+
+    fun stopScanning(): Completable {
+        return bluetoothScannerService.stopScanning()
     }
 }

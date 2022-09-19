@@ -14,7 +14,8 @@ object PmModule {
                 value = getProperty(PARAM_VALUE),
                 startAdvertisingUseCase = get(),
                 stopAdvertisingUseCase = get(),
-                startScanningUseCase = get()
+                startScanningUseCase = get(),
+                stopScanningUseCase = get()
             )
         }
     }

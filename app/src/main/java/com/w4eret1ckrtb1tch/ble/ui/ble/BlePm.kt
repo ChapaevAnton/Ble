@@ -4,6 +4,7 @@ import android.util.Log
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StartAdvertisingUseCase
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StartScanningUseCase
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StopAdvertisingUseCase
+import com.w4eret1ckrtb1tch.ble.domain.usecase.StopScanningUseCase
 import com.w4eret1ckrtb1tch.ble.ui.common.ScreenPm
 import io.reactivex.disposables.Disposable
 import me.dmdev.rxpm.action
@@ -12,7 +13,8 @@ class BlePm(
     private val value: String,
     private val startAdvertisingUseCase: StartAdvertisingUseCase,
     private val stopAdvertisingUseCase: StopAdvertisingUseCase,
-    private val startScanningUseCase: StartScanningUseCase
+    private val startScanningUseCase: StartScanningUseCase,
+    private val stopScanningUseCase: StopScanningUseCase
 ) : ScreenPm() {
 
     private var scanDisposable: Disposable? = null
@@ -49,22 +51,19 @@ class BlePm(
             .untilDestroy()
 
         startScanningClick.observable
-            .retry()
-            .subscribe {
+            .switchMapCompletable {
                 startScanningUseCase()
-                    .doOnSubscribe { Log.d("TAG", "StartScanning: SCAN") }
-                    .doOnNext { Log.d("TAG", "ScanningResult: $it") }
-                    .doOnError { Log.d("TAG", "ScanningError: $it") }
-                    .doOnDispose { Log.d("TAG", "StopScanning: STOP") }
-                    .subscribe()
-                    .let { scanDisposable = it }
             }
+            .retry()
+            .subscribe()
             .untilDestroy()
 
         stopScanningClick.observable
+            .switchMapCompletable {
+                stopScanningUseCase()
+            }
             .retry()
-            .subscribe {
-                scanDisposable?.dispose()
-            }.untilDestroy()
+            .subscribe()
+            .untilDestroy()
     }
 }
