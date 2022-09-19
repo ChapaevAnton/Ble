@@ -5,8 +5,10 @@ import com.polidea.rxandroidble2.RxBleClient
 import com.polidea.rxandroidble2.scan.ScanFilter
 import com.polidea.rxandroidble2.scan.ScanSettings
 import io.reactivex.Completable
+import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.disposables.Disposable
+import io.reactivex.schedulers.Schedulers
 
 class BluetoothScannerService(
     private val rxBleClient: RxBleClient
@@ -23,18 +25,17 @@ class BluetoothScannerService(
         .setServiceUuid(BluetoothAdvertiserService.SERVICE_UUID)
         .build()
 
-    fun startScanning(): Completable {
-        return Completable.fromAction {
+    // TODO: Возможно нужен горячий Observable, и подписка на него...
+    fun startScanning(): Observable<String> {
+        return Observable.create { emitter ->
             rxBleClient
                 .scanBleDevices(setting, filter)
-                .map { scanResult ->
-                    scanResult.toString()
-                }
-                .doOnSubscribe { Log.d("TAG", "StartScanning: SCAN") }
-                .doOnNext { Log.d("TAG", "ScanningResult: $it") }
-                .doOnError { Log.d("TAG", "ScanningError: $it") }
-                .doOnDispose { Log.d("TAG", "StopScanning: STOP") }
-                .subscribe()
+                .map { scanResult -> scanResult.toString() }
+                .doOnSubscribe { Log.d("TAG", "ScannerService: START") }
+                .doOnDispose { Log.d("TAG", "ScannerService: doOnDispose") }
+                .doFinally { Log.d("TAG", "ScannerService: STOP") }
+                .subscribeOn(Schedulers.io())
+                .subscribe(emitter::onNext, emitter::onError)
                 .also { scanningDisposable = it }
         }
     }

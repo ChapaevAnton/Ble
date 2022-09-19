@@ -6,7 +6,6 @@ import com.w4eret1ckrtb1tch.ble.domain.usecase.StartScanningUseCase
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StopAdvertisingUseCase
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StopScanningUseCase
 import com.w4eret1ckrtb1tch.ble.ui.common.ScreenPm
-import io.reactivex.disposables.Disposable
 import me.dmdev.rxpm.action
 
 class BlePm(
@@ -16,8 +15,6 @@ class BlePm(
     private val startScanningUseCase: StartScanningUseCase,
     private val stopScanningUseCase: StopScanningUseCase
 ) : ScreenPm() {
-
-    private var scanDisposable: Disposable? = null
 
     val startAdvertisingClick = action<Unit>()
     val stopAdvertisingClick = action<Unit>()
@@ -51,8 +48,10 @@ class BlePm(
             .untilDestroy()
 
         startScanningClick.observable
-            .switchMapCompletable {
+            .switchMap {
                 startScanningUseCase()
+                    .doOnNext { Log.d("TAG", "StartScanning Result: $it") }
+                    .doOnError { Log.d("TAG", "StartScanning: ERROR ->$it") }
             }
             .retry()
             .subscribe()
@@ -61,6 +60,8 @@ class BlePm(
         stopScanningClick.observable
             .switchMapCompletable {
                 stopScanningUseCase()
+                    .doOnComplete { Log.d("TAG", "StopScanning: OK") }
+                    .doOnError { Log.d("TAG", "StopScanning: ERROR ->$it") }
             }
             .retry()
             .subscribe()
