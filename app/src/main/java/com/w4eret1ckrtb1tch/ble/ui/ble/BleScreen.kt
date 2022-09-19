@@ -13,6 +13,7 @@ import com.w4eret1ckrtb1tch.ble.ui.common.Screen
 import kotlinx.android.synthetic.main.screen_ble.btStartAdvertiser
 import kotlinx.android.synthetic.main.screen_ble.btStartScan
 import kotlinx.android.synthetic.main.screen_ble.btStopAdvertiser
+import kotlinx.android.synthetic.main.screen_ble.btStopScan
 import me.dmdev.rxpm.bindTo
 
 class BleScreen : Screen<BlePm>() {
@@ -28,6 +29,7 @@ class BleScreen : Screen<BlePm>() {
 
     override val screenLayout: Int = R.layout.screen_ble
 
+    // QUESTION: передал параметр именно как в проекте...
     override fun providePresentationModel(): BlePm =
         getWithProperty(PmModule.PARAM_VALUE to "1234567890")
 
@@ -40,10 +42,16 @@ class BleScreen : Screen<BlePm>() {
         super.onBindPresentationModel(pm)
 
         btStartAdvertiser.clicks() bindTo pm.startAdvertisingClick
+
         btStopAdvertiser.clicks() bindTo pm.stopAdvertisingClick
+
         btStartScan.clicks().map {
+            // QUESTION: возможно понадобится еще permission...
             requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         } bindTo pm.startScanningClick
+
+        btStopScan.clicks() bindTo pm.stopScanningClick
+
     }
 
 }

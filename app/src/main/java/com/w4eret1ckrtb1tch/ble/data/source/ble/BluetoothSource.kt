@@ -35,7 +35,6 @@ class BluetoothSource(
             .filter { it }
             .switchIfEmpty(Single.error(IllegalStateException("Permission not granted at run time")))
             .flatMapObservable {
-                Log.d("TAG", "startScanning: START")
                 bluetoothScannerService.startScanning()
             }
             .subscribeOn(Schedulers.io())

@@ -66,7 +66,7 @@ class BluetoothAdvertiserService(context: Context) {
                 Log.d("TAG", "startAdvertising: ok")
             }
             .doOnError {
-                Log.d("TAG", "startAdvertising: error")
+                Log.d("TAG", "startAdvertising: $it")
             }
     }
 
@@ -83,7 +83,7 @@ class BluetoothAdvertiserService(context: Context) {
                 advertiseCallback = null
             }
             .doOnError {
-                Log.d("TAG", "stopAdvertising: error")
+                Log.d("TAG", "stopAdvertising: $it")
             }
     }
 

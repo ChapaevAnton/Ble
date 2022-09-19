@@ -5,6 +5,7 @@ import com.w4eret1ckrtb1tch.ble.domain.usecase.StartAdvertisingUseCase
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StartScanningUseCase
 import com.w4eret1ckrtb1tch.ble.domain.usecase.StopAdvertisingUseCase
 import com.w4eret1ckrtb1tch.ble.ui.common.ScreenPm
+import io.reactivex.disposables.Disposable
 import me.dmdev.rxpm.action
 
 class BlePm(
@@ -14,9 +15,12 @@ class BlePm(
     private val startScanningUseCase: StartScanningUseCase
 ) : ScreenPm() {
 
+    private var scanDisposable: Disposable? = null
+
     val startAdvertisingClick = action<Unit>()
     val stopAdvertisingClick = action<Unit>()
     val startScanningClick = action<Unit>()
+    val stopScanningClick = action<Unit>()
 
     override fun onCreate() {
         super.onCreate()
@@ -27,8 +31,8 @@ class BlePm(
         startAdvertisingClick.observable
             .switchMapCompletable {
                 startAdvertisingUseCase()
-                    .doOnComplete { Log.d("TAG", "startAdvertisingClick: ok") }
-                    .doOnError { Log.d("TAG", "startAdvertisingClick: error") }
+                    .doOnComplete { Log.d("TAG", "StartAdvertising: OK") }
+                    .doOnError { Log.d("TAG", "StartAdvertising: ERROR ->$it") }
             }
             .retry()
             .subscribe()
@@ -37,24 +41,30 @@ class BlePm(
         stopAdvertisingClick.observable
             .switchMapCompletable {
                 stopAdvertisingUseCase()
-                    .doOnComplete { Log.d("TAG", "stopAdvertisingClick: ok") }
-                    .doOnError { Log.d("TAG", "stopAdvertisingClick: error") }
+                    .doOnComplete { Log.d("TAG", "StopAdvertising: OK") }
+                    .doOnError { Log.d("TAG", "StopAdvertising: ERROR ->$it") }
             }
             .retry()
             .subscribe()
             .untilDestroy()
 
-        // TODO: нужно добавить запрос permission
         startScanningClick.observable
-            .switchMap {
-                Log.d("TAG", "startScanningClick: SCAN")
-                startScanningUseCase()
-                    .doOnNext { Log.d("TAG", "ScanningResult: $it") }
-                    .doOnComplete { Log.d("TAG", "startScanningClick: ok") }
-                    .doOnError { Log.d("TAG", "startScanningClick: $it") }
-            }
             .retry()
-            .subscribe()
+            .subscribe {
+                startScanningUseCase()
+                    .doOnSubscribe { Log.d("TAG", "StartScanning: SCAN") }
+                    .doOnNext { Log.d("TAG", "ScanningResult: $it") }
+                    .doOnError { Log.d("TAG", "ScanningError: $it") }
+                    .doOnDispose { Log.d("TAG", "StopScanning: STOP") }
+                    .subscribe()
+                    .let { scanDisposable = it }
+            }
             .untilDestroy()
+
+        stopScanningClick.observable
+            .retry()
+            .subscribe {
+                scanDisposable?.dispose()
+            }.untilDestroy()
     }
 }
