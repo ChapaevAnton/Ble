@@ -3,12 +3,14 @@ package com.w4eret1ckrtb1tch.ble.data.system.ble
 import android.util.Log
 import com.polidea.rxandroidble2.RxBleClient
 import com.polidea.rxandroidble2.scan.ScanFilter
+import com.polidea.rxandroidble2.scan.ScanResult
 import com.polidea.rxandroidble2.scan.ScanSettings
-import com.w4eret1ckrtb1tch.ble.domain.entity.ScanResult
+import com.w4eret1ckrtb1tch.ble.domain.entity.ScanningResult
 import io.reactivex.Completable
 import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.disposables.Disposable
+import java.util.concurrent.TimeUnit
 
 class BluetoothScannerService(
     private val rxBleClient: RxBleClient
@@ -26,12 +28,15 @@ class BluetoothScannerService(
         .build()
 
     // TODO: Возможно нужен горячий Observable, и подписка на него...
-    fun startScanning(): Observable<ScanResult> {
+    fun startScanning(isUserDistinct: Boolean = false): Observable<ScanningResult> {
         return Observable.create { emitter ->
+
             rxBleClient
                 .scanBleDevices(scanSettings, scanFilter)
+                .scanTimeBle(10L, TimeUnit.SECONDS)
+                .distinctBle(isUserDistinct)
                 .map { scanResult ->
-                    ScanResult(
+                    ScanningResult(
                         serviceUUID = scanResult.scanRecord.serviceUuids[SERVICE_INDEX].toString(),
                         userUUID = scanResult.scanRecord.serviceUuids[USER_INDEX].toString(),
                         scanResult = scanResult
@@ -53,6 +58,26 @@ class BluetoothScannerService(
 
     fun isScanRuntimePermissionGranted(): Single<Boolean> {
         return Single.just(rxBleClient.isScanRuntimePermissionGranted)
+    }
+
+    // QUESTION: общая продолжительность сканирования вне зависимости от результата
+    private fun <T : ScanResult> Observable<T>.scanTimeBle(
+        time: Long,
+        unit: TimeUnit
+    ): Observable<T> {
+        val stopTime = System.currentTimeMillis() + unit.toMillis(time)
+        return this.timestamp()
+            .map { timed ->
+                if (timed.time() >= stopTime) {
+                    scanningDisposable?.dispose()
+                }
+                timed.value()
+            }
+    }
+
+    // QUESTION: отбрасывает повторяющиеся USER_UUID
+    private fun <T : ScanResult> Observable<T>.distinctBle(isEnabled: Boolean): Observable<T> {
+        return if (isEnabled) this.distinct { it.scanRecord.serviceUuids[USER_INDEX].toString() } else this
     }
 
     private companion object {

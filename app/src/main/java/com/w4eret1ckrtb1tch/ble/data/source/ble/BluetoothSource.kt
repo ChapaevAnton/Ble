@@ -4,7 +4,7 @@ import android.os.ParcelUuid
 import android.util.Log
 import com.w4eret1ckrtb1tch.ble.data.system.ble.BluetoothAdvertiserService
 import com.w4eret1ckrtb1tch.ble.data.system.ble.BluetoothScannerService
-import com.w4eret1ckrtb1tch.ble.domain.entity.ScanResult
+import com.w4eret1ckrtb1tch.ble.domain.entity.ScanningResult
 import io.reactivex.Completable
 import io.reactivex.Observable
 import io.reactivex.Single
@@ -32,7 +32,7 @@ class BluetoothSource(
             .observeOn(AndroidSchedulers.mainThread())
     }
 
-    fun startScanning(): Observable<ScanResult> {
+    fun startScanning(): Observable<ScanningResult> {
         return bluetoothScannerService.isScanRuntimePermissionGranted()
             .filter { it }
             .switchIfEmpty(Single.error(IllegalStateException("Permission not granted at run time")))
