@@ -11,6 +11,7 @@ import io.reactivex.Observable
 import io.reactivex.Single
 import io.reactivex.disposables.Disposable
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 class BluetoothScannerService(
     private val rxBleClient: RxBleClient
@@ -30,7 +31,6 @@ class BluetoothScannerService(
     // TODO: Возможно нужен горячий Observable, и подписка на него...
     fun startScanning(isUserDistinct: Boolean = false): Observable<ScanningResult> {
         return Observable.create { emitter ->
-
             rxBleClient
                 .scanBleDevices(scanSettings, scanFilter)
                 .scanTimeBle(10L, TimeUnit.SECONDS)
@@ -43,8 +43,9 @@ class BluetoothScannerService(
                     )
                 }
                 .doOnSubscribe { Log.d("TAG", "ScannerService: START") }
-                .doOnDispose { Log.d("TAG", "ScannerService: doOnDispose") }
-                .doFinally { Log.d("TAG", "ScannerService: STOP") }
+                .doFinally {
+                    Log.d("TAG", "ScannerService: STOP ${scanningDisposable?.isDisposed}")
+                }
                 .subscribe(emitter::onNext, emitter::onError)
                 .also { scanningDisposable = it }
         }
@@ -53,6 +54,7 @@ class BluetoothScannerService(
     fun stopScanning(): Completable {
         return Completable.fromAction {
             scanningDisposable?.dispose()
+            scanningDisposable = null
         }
     }
 
@@ -65,11 +67,23 @@ class BluetoothScannerService(
         time: Long,
         unit: TimeUnit
     ): Observable<T> {
-        val stopTime = System.currentTimeMillis() + unit.toMillis(time)
-        return this.timestamp()
+        val scanTime = System.currentTimeMillis() + unit.toMillis(time)
+        return this
+            .timeout(time, unit) {
+                it.onError(
+                    TimeoutException(
+                        "Scan stopped because total execution time exceeded ${
+                            unit.toSeconds(time)
+                        } seconds"
+                    )
+                )
+            }
+            .timestamp()
             .map { timed ->
-                if (timed.time() >= stopTime) {
-                    scanningDisposable?.dispose()
+                if (timed.time() >= scanTime) {
+                    throw TimeoutException(
+                        "Scan stopped because total execution time exceeded ${unit.toSeconds(time)} seconds"
+                    )
                 }
                 timed.value()
             }
