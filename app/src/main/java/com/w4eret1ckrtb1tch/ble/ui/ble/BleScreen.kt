@@ -1,6 +1,7 @@
 package com.w4eret1ckrtb1tch.ble.ui.ble
 
 import android.Manifest
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.widget.Toast
@@ -18,12 +19,31 @@ import me.dmdev.rxpm.bindTo
 
 class BleScreen : Screen<BlePm>() {
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
-            if (isGranted) {
-                Toast.makeText(requireContext(), "Yes permission", Toast.LENGTH_SHORT).show()
+    private val requestPermissionScanLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions: Map<String, Boolean> ->
+            val isGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                permissions[Manifest.permission.BLUETOOTH_SCAN] == true &&
+                        permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true &&
+                        permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
             } else {
-                Toast.makeText(requireContext(), "Not permission", Toast.LENGTH_SHORT).show()
+                permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true &&
+                        permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            }
+            if (isGranted) {
+                Toast.makeText(requireContext(), "Permissions granted ", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Not permission granted", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+
+    private val requestPermissionAdvertiserLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                Toast.makeText(requireContext(), "Permissions granted ", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(requireContext(), "Not permission granted", Toast.LENGTH_SHORT)
+                    .show()
             }
         }
 
@@ -41,13 +61,30 @@ class BleScreen : Screen<BlePm>() {
     override fun onBindPresentationModel(pm: BlePm) {
         super.onBindPresentationModel(pm)
 
-        btStartAdvertiser.clicks() bindTo pm.startAdvertisingClick
+        btStartAdvertiser.clicks().map {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                requestPermissionAdvertiserLauncher.launch(Manifest.permission.BLUETOOTH_ADVERTISE)
+            }
+        } bindTo pm.startAdvertisingClick
 
         btStopAdvertiser.clicks() bindTo pm.stopAdvertisingClick
 
         btStartScan.clicks().map {
             // QUESTION: возможно понадобится еще permission...
-            requestPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            requestPermissionScanLauncher.launch(
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    arrayOf(
+                        Manifest.permission.BLUETOOTH_SCAN,
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                } else {
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    )
+                }
+            )
         } bindTo pm.startScanningClick
 
         btStopScan.clicks() bindTo pm.stopScanningClick

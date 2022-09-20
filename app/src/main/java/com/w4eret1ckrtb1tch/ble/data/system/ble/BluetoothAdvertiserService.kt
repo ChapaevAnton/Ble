@@ -1,18 +1,21 @@
 package com.w4eret1ckrtb1tch.ble.data.system.ble
 
-import android.annotation.SuppressLint
+import android.Manifest
 import android.bluetooth.BluetoothManager
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.ParcelUuid
 import android.util.Log
+import androidx.core.app.ActivityCompat
 import androidx.core.content.getSystemService
 import io.reactivex.Completable
 
 
-class BluetoothAdvertiserService(context: Context) {
+class BluetoothAdvertiserService(private val context: Context) {
 
     private val bluetoothAdvertiser = context
         .getSystemService<BluetoothManager>()
@@ -38,12 +41,26 @@ class BluetoothAdvertiserService(context: Context) {
         Log.d("TAG", "BluetoothAdvertiserService: $context")
     }
 
-    @SuppressLint("MissingPermission")
     fun startAdvertising(userId: ParcelUuid? = null): Completable {
         return Completable
             .create { emitter ->
+                if (bluetoothAdvertiser == null) {
+                    return@create emitter
+                        .onError(IllegalStateException("The service or null if the class is not a supported system service"))
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ActivityCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.BLUETOOTH_ADVERTISE
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) {
+                        return@create emitter.onError(IllegalStateException("Permission not granted at run time"))
+                    }
+                }
+
                 if (advertiseCallback != null) {
-                    emitter.onError(IllegalStateException("Advertising running"))
+                    return@create emitter.onError(IllegalStateException("Advertising running"))
                 }
 
                 if (userId != null) {
@@ -66,16 +83,18 @@ class BluetoothAdvertiserService(context: Context) {
                     }
                 }
 
-                advertiseCallback?.let { callback ->
-                    bluetoothAdvertiser?.startAdvertising(
-                        settings,
-                        advertiseData,
-                        scanResponse,
-                        callback
-                    )
-                        ?: emitter.onError(IllegalStateException("The service or null if the class is not a supported system service"))
-                } ?: emitter
-                    .onError(IllegalStateException("Advertising initialization error"))
+                if (advertiseCallback == null) {
+                    return@create emitter
+                        .onError(IllegalStateException("Advertising initialization error"))
+                }
+
+                bluetoothAdvertiser.startAdvertising(
+                    settings,
+                    advertiseData,
+                    scanResponse,
+                    advertiseCallback
+                )
+
             }
             .doOnComplete {
                 Log.d("TAG", "startAdvertising: ok")
@@ -85,13 +104,20 @@ class BluetoothAdvertiserService(context: Context) {
             }
     }
 
-    @SuppressLint("MissingPermission")
     fun stopAdvertising(): Completable {
         return Completable
             .fromAction {
-                advertiseCallback?.let { callback ->
-                    bluetoothAdvertiser?.stopAdvertising(callback)
-                } ?: throw IllegalStateException("Advertising not running")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (ActivityCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.BLUETOOTH_ADVERTISE
+                        ) != PackageManager.PERMISSION_GRANTED
+                    ) throw IllegalStateException("Permission not granted at run time")
+                }
+
+                if (advertiseCallback == null) throw IllegalStateException("Advertising not running")
+
+                bluetoothAdvertiser?.stopAdvertising(advertiseCallback)
             }
             .doOnComplete {
                 Log.d("TAG", "stopAdvertising: ok")
