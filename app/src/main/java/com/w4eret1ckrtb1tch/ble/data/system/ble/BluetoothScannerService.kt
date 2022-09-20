@@ -82,7 +82,9 @@ class BluetoothScannerService(
             .map { timed ->
                 if (timed.time() >= scanTime) {
                     throw TimeoutException(
-                        "Scan stopped because total execution time exceeded ${unit.toSeconds(time)} seconds"
+                        "Scan stopped because total execution time exceeded ${
+                            unit.toSeconds(time)
+                        } seconds"
                     )
                 }
                 timed.value()
